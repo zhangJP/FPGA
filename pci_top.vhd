@@ -1,3 +1,26 @@
+-- * Copyright (C) 2012 by ZhangJiPing
+-- * All rights reserved.
+-- *
+-- * @Author:ZhangJiPing
+-- *
+-- * This program is free software; you can redistribute it and/or
+-- * modify it under the terms of the GNU General Public License as
+-- * published by the Free Software Foundation; either version 2 of
+-- * the License, or (at your option) any later version.
+-- *
+-- * This program is distributed in the hope that it will be useful,
+-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- * GNU General Public License for more details.
+-- *
+-- * You should have received a copy of the GNU General Public License
+-- * along with this program; if not, write to the Free Software
+-- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+-- * MA 02111-1307 USA
+-- *
+-- * @History:
+-- * ZhangJiPing <cn.zhangJP@gmail.com> 
+
 library ieee;
 use ieee.std_logic_1164.all;
 entity pci_top is
@@ -31,6 +54,7 @@ end pci_top;
 architecture syn of pci_top is
     component pci_core
 	generic (
+            DEVICE_ID           : std_logic_vector(15 downto 0);
             LOCAL_DBUS_WIDE     : integer range 0 to 127;
             BaseAddress0Size    : integer         := 8     ;
             BaseAddress1Size    : integer         := 5     ;
@@ -72,10 +96,11 @@ begin
 
     pci_t_32 : pci_core
 	generic map (
+            DEVICE_ID                                   =>      x"9054",
             LOCAL_DBUS_WIDE                             =>      LOCAL_DB_BUS_WIDE,
             BaseAddress0Size                            =>      0,
             BaseAddress1Size                            =>      0,
-            BaseAddress2Size                            =>      6,
+            BaseAddress2Size                            =>      8,
             BaseAddress3Size                            =>      6,
             BaseAddress4Size                            =>      6,
             BaseAddress5Size                            =>      6,
