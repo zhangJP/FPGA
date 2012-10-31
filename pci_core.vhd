@@ -22,7 +22,6 @@
 -- * ZhangJiPing <cn.zhangJP@gmail.com> 
 -----------------------------------------------------------------------------------------------------------
 --Base2'Base3'Base4 and Base5 is memory space
---Base1 is IO space
 -----------------------------------------------------------------------------------------------------------
 
 library ieee;
@@ -31,54 +30,60 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_signed.all;
 entity pci_core is
     generic(
-        DEVICE_ID                               :       std_logic_vector(15 downto 0);
-        LOCAL_DBUS_WIDE                         :       integer range 0 to 127  ;
-        BaseAddress0Size                        :       integer                 ;
-        BaseAddress1Size                        :       integer                 ;
-        BaseAddress2Size                        :       integer                 ;
-        BaseAddress3Size                        :       integer                 ;
-        BaseAddress4Size                        :       integer                 ;
-        BaseAddress5Size                        :       integer                 ;
-        Bar2SpaceType                           :       std_logic               ;
-        Bar3SpaceType                           :       std_logic               ;
-        Bar4SpaceType                           :       std_logic               ;
+        DEVICE_ID                               :       std_logic_vector(15 downto 0)   ;
+        VENDOR_ID                               :       std_logic_vector(15 downto 0)   ;
+        CLASS_CODE                              :       std_logic_vector(15 downto 0)   ;
+        SYS_DEVICE_ID                           :       std_logic_vector(15 downto 0)   ;
+        SYS_VENDOR_ID                           :       std_logic_vector(15 downto 0)   ;
+        REVISION_ID                             :       std_logic_vector(15 downto 0)   ;
+        COMMAND                                 :       std_logic_vector(15 downto 0)   ;
+        STATUS                                  :       std_logic_vector(15 downto 0)   ;
+        
+        LOCAL_DBUS_WIDE                         :       integer range 0 to 127          ;
+        BaseAddress0Size                        :       integer                         ;
+        BaseAddress1Size                        :       integer                         ;
+        BaseAddress2Size                        :       integer                         ;
+        BaseAddress3Size                        :       integer                         ;
+        BaseAddress4Size                        :       integer                         ;
+        BaseAddress5Size                        :       integer                         ;
+        Bar0SpaceType                           :       std_logic                       ;
+        Bar1SpaceType                           :       std_logic                       ;
+        Bar2SpaceType                           :       std_logic                       ;
+        Bar3SpaceType                           :       std_logic                       ;
+        Bar4SpaceType                           :       std_logic                       ;
         Bar5SpaceType                           :       std_logic
         );
     port (
-        clk	                                : in    std_logic;
-        rstn	                                : in    std_logic;
-        idsel	                                : in    std_logic;
-        framen	                                : inout std_logic;
-        irdyn	                                : in    std_logic;
-        devseln	                                : inout std_logic;
-        trdyn	                                : inout std_logic;
-        stopn	                                : inout std_logic;
-        intan	                                : out   std_logic;
-        serrn	                                : out   std_logic;
-        cben	                                : inout std_logic_vector (3 downto 0);
-        par	                                : inout std_logic;
-        perrn	                                : inout std_logic;
-        ad                                      : inout std_logic_vector(31 downto 0);
+        clk	                                : in    std_logic                                       ;
+        rstn	                                : in    std_logic                                       ;
+        idsel	                                : in    std_logic                                       ;
+        framen	                                : inout std_logic                                       ;
+        irdyn	                                : in    std_logic                                       ;
+        devseln	                                : inout std_logic                                       ;
+        trdyn	                                : inout std_logic                                       ;
+        stopn	                                : inout std_logic                                       ;
+        intan	                                : out   std_logic                                       ;
+        serrn	                                : out   std_logic                                       ;
+        cben	                                : inout std_logic_vector (3 downto 0)                   ;
+        par	                                : inout std_logic                                       ;
+        perrn	                                : inout std_logic                                       ;
+        req 					: out 	std_logic                                       ;
+        gnt 					: in 	std_logic                                       ;
+        ad                                      : inout std_logic_vector(31 downto 0)                   ;
 
-        local_cs                                : out   std_logic_vector(5 downto 0);
-        local_wr                                : out   std_logic;
-        local_rd                                : out   std_logic;
-        local_ab                                : out   std_logic_vector(31 downto 0);
-        local_rdb                               : in    std_logic_vector(LOCAL_DBUS_WIDE-1 downto 0);
-        local_wdb                               : out   std_logic_vector(LOCAL_DBUS_WIDE-1 downto 0)
+        local_cs                                : out   std_logic_vector(5 downto 0)                    ;
+        local_wr                                : out   std_logic                                       ;
+        local_rd                                : out   std_logic                                       ;
+        local_ab                                : out   std_logic_vector(31 downto 0)                   ;
+        local_rdb                               : in    std_logic_vector(LOCAL_DBUS_WIDE-1 downto 0)    ;
+        local_wdb                               : out   std_logic_vector(LOCAL_DBUS_WIDE-1 downto 0)    ;
+        local_req_dma                           : in    std_logic 
         );
 end pci_core;
 
 architecture one of pci_core is
-    constant    DeviceID                        :       std_logic_vector := DEVICE_ID;
-    constant    VendorID                        :       std_logic_vector := x"10b5";
-    constant    Class_code                      :       std_logic_vector := x"0680";
-    constant    SYS_DevideID                    :       std_logic_vector := DeviceID;
-    constant    SYS_VentirID                    :       std_logic_vector := VendorID;
-    constant    RevisionID                      :       std_logic_vector := x"000b";
-    constant    Command                         :       std_logic_vector := x"0117";
-    constant    Status                          :       std_logic_vector := x"0290";
-
+    constant    DMAMODE0                        :       std_logic_vector := x"00000043";
+    constant    DMACRS0                         :       std_logic_vector := x"10";
     constant    ConfigRead                      :       std_logic_vector := b"1010";
     constant    ConfigWrite                     :       std_logic_vector := b"1011";
     constant    IO_Read                         :       std_logic_vector := b"0010";
@@ -130,95 +135,132 @@ architecture one of pci_core is
     signal      Memory_ReadPhase                :       std_logic_vector(3  downto 0)   := x"0"         ;
     signal      Memory_WritePhase               :       std_logic_vector(3  downto 0)   := x"0"         ;
     
-    signal      IdselStatus                     :       std_logic                       := '0'          ;
     signal      AddressLocalAB                  :       std_logic_vector(31 downto 0)   := x"00000000"  ;
     signal      AddressLocalWdb                 :       std_logic_vector(31 downto 0)   := x"00000000"  ;
     signal      trdyn_status                    :       std_logic                                       ;
     signal      local_ab_wide                   :       integer range 0 to 127          := 0            ;
+    signal      local_cs_status                 :       std_logic_vector(5 downto 0)    := b"000000"    ;
+    signal      gnt_status                      :       std_logic                       := '0'          ;
 begin
-    intan                       <=      '1';
+    intan                               <=      '1';
+    gnt_status                          <=      gnt;
 
-    AddressRegister             <=      ad                      when framen = '0' and (clk'event and clk = '0') else
-                                        AddressRegister;
-    ad                          <=      OutToPciRegister        when (Memory_ReadPhase = Memory_Read or ConfigReadPhase = ConfigRead) and irdyn = '0' else
-                                        x"ZZZZZZZZ";
-    IdselStatus                 <=      '1'                     when idsel = '1'                else
-                                        '0';
+    AddressRegister                     <=      ad                      when framen = '0' and (clk'event and clk = '0') else
+                                                AddressRegister;
+
+    ad                                  <=      OutToPciRegister        when (IO_ReadPhase = IO_Read or Memory_ReadPhase = Memory_Read or ConfigReadPhase = ConfigRead) and irdyn = '0'else       x"ZZZZZZZZ";
+
+    start_BaseAddressRegister0          <=      wbBaseAddressRegister0  when irdyn'event and irdyn = '1'and wbBaseAddressRegister0 /= x"00000000" else
+                                                start_BaseAddressRegister0;
+
+    end_BaseAddressRegister0            <=      start_BaseAddressRegister0 + (2**BaseAddress0Size)/4 when irdyn'event and irdyn = '1'and  start_BaseAddressRegister0 /= x"00000000" else
+                                                end_BaseAddressRegister0;
+
+    start_BaseAddressRegister1          <=      wbBaseAddressRegister1 and x"fffffffe"  when irdyn'event and irdyn = '1'and wbBaseAddressRegister1  /= x"00000000" else
+                                                start_BaseAddressRegister1;
+
+    end_BaseAddressRegister1            <=      start_BaseAddressRegister1 + (2**BaseAddress1Size)/4 when irdyn'event and irdyn = '1'and start_BaseAddressRegister1 /= x"00000000" else
+                                                end_BaseAddressRegister1;
+
+    start_BaseAddressRegister2          <=      wbBaseAddressRegister2  when irdyn'event and irdyn = '1'and wbBaseAddressRegister2     /= x"00000000" else
+                                                start_BaseAddressRegister2;
+
+    end_BaseAddressRegister2            <=      start_BaseAddressRegister2 + (2**BaseAddress2Size)/4 when irdyn'event and irdyn = '1'and start_BaseAddressRegister2 /= x"00000000" else
+                                                end_BaseAddressRegister2;
+
+    start_BaseAddressRegister3          <=      wbBaseAddressRegister3  when irdyn'event and irdyn = '1'and wbBaseAddressRegister3     /= x"00000000" else
+                                                start_BaseAddressRegister3;
+
+    end_BaseAddressRegister3            <=      start_BaseAddressRegister3 + (2**BaseAddress3Size)/4 when irdyn'event and irdyn = '1'and start_BaseAddressRegister3 /= x"00000000" else
+                                                end_BaseAddressRegister3;
+
+    start_BaseAddressRegister4          <=      wbBaseAddressRegister4  when irdyn'event and irdyn = '1'and wbBaseAddressRegister4     /= x"00000000" else
+                                                start_BaseAddressRegister4;
+
+    end_BaseAddressRegister4            <=      start_BaseAddressRegister4 + (2**BaseAddress4Size)/4 when irdyn'event and irdyn = '1'and start_BaseAddressRegister4 /= x"00000000" else
+                                                end_BaseAddressRegister4;
+
+    start_BaseAddressRegister5          <=      wbBaseAddressRegister5  when irdyn'event and irdyn = '1'and wbBaseAddressRegister5     /= x"00000000" else
+                                                start_BaseAddressRegister5;
+
+    end_BaseAddressRegister5            <=      start_BaseAddressRegister5 + (2**BaseAddress5Size)/4 when irdyn'event and irdyn = '1'and start_BaseAddressRegister5 /= x"00000000" else
+                                                end_BaseAddressRegister5;
     
-    start_BaseAddressRegister0  <=      wbBaseAddressRegister0                           when irdyn'event and irdyn = '1'and wbBaseAddressRegister0     /= x"00000000" else
-                                        start_BaseAddressRegister0;
-    end_BaseAddressRegister0    <=      start_BaseAddressRegister0 + 2**BaseAddress0Size when irdyn'event and irdyn = '1'and  start_BaseAddressRegister0 /= x"00000000" else
-                                        end_BaseAddressRegister0;
-    start_BaseAddressRegister1  <=      wbBaseAddressRegister1                           when irdyn'event and irdyn = '1'and  wbBaseAddressRegister1     /= x"00000000" else
-                                        start_BaseAddressRegister1;
-    end_BaseAddressRegister1    <=      start_BaseAddressRegister1 + 2**BaseAddress1Size when irdyn'event and irdyn = '1'and start_BaseAddressRegister1 /= x"00000000" else
-                                        end_BaseAddressRegister1;
-    start_BaseAddressRegister2  <=      wbBaseAddressRegister2                           when irdyn'event and irdyn = '1'and wbBaseAddressRegister2     /= x"00000000" else
-                                        start_BaseAddressRegister2;
-    end_BaseAddressRegister2    <=      start_BaseAddressRegister2 + 2**BaseAddress2Size when irdyn'event and irdyn = '1'and start_BaseAddressRegister2 /= x"00000000" else
-                                        end_BaseAddressRegister2;
-    start_BaseAddressRegister3  <=      wbBaseAddressRegister3                           when irdyn'event and irdyn = '1'and wbBaseAddressRegister3     /= x"00000000" else
-                                        start_BaseAddressRegister3;
-    end_BaseAddressRegister3    <=      start_BaseAddressRegister3 + 2**BaseAddress3Size when irdyn'event and irdyn = '1'and start_BaseAddressRegister3 /= x"00000000" else
-                                        end_BaseAddressRegister3;
-    start_BaseAddressRegister4  <=      wbBaseAddressRegister4                           when irdyn'event and irdyn = '1'and wbBaseAddressRegister4     /= x"00000000" else
-                                        start_BaseAddressRegister4;
-    end_BaseAddressRegister4    <=      start_BaseAddressRegister4 + 2**BaseAddress4Size when irdyn'event and irdyn = '1'and start_BaseAddressRegister4 /= x"00000000" else
-                                        end_BaseAddressRegister4;
-    start_BaseAddressRegister5  <=      wbBaseAddressRegister5                           when irdyn'event and irdyn = '1'and wbBaseAddressRegister5     /= x"00000000" else
-                                        start_BaseAddressRegister5;
-    end_BaseAddressRegister5    <=      start_BaseAddressRegister5 + 2**BaseAddress5Size when irdyn'event and irdyn = '1'and start_BaseAddressRegister5 /= x"00000000" else
-                                        end_BaseAddressRegister5;
-    
-    AddressLocalAB(29 downto 0)      <=
-        AddressRegister(31 downto 2 ) - start_BaseAddressRegister0(31 downto 2) when AddressRegister >= start_BaseAddressRegister0 and AddressRegister <= end_BaseAddressRegister0 else
-        AddressRegister(31 downto 2 ) - start_BaseAddressRegister1(31 downto 2) when AddressRegister >= start_BaseAddressRegister1 and AddressRegister <= end_BaseAddressRegister1 else
-        AddressRegister(31 downto 2 ) - start_BaseAddressRegister2(31 downto 2) when AddressRegister >= start_BaseAddressRegister2 and AddressRegister <= end_BaseAddressRegister2 else
-        AddressRegister(31 downto 2 ) - start_BaseAddressRegister3(31 downto 2) when AddressRegister >= start_BaseAddressRegister3 and AddressRegister <= end_BaseAddressRegister3 else
-        AddressRegister(31 downto 2 ) - start_BaseAddressRegister4(31 downto 2) when AddressRegister >= start_BaseAddressRegister4 and AddressRegister <= end_BaseAddressRegister4 else
-        AddressRegister(31 downto 2 ) - start_BaseAddressRegister5(31 downto 2) when AddressRegister >= start_BaseAddressRegister5 and AddressRegister <= end_BaseAddressRegister5 else
-        AddressLocalAB(29 downto 0);
+    AddressLocalAB(29 downto 0)         <=      AddressRegister(31 downto 2 ) - start_BaseAddressRegister0(31 downto 2)
+when AddressRegister >= start_BaseAddressRegister0 and AddressRegister <=end_BaseAddressRegister0
+else
+                                                AddressRegister(31 downto 2 ) - start_BaseAddressRegister1(31 downto 2)
+when AddressRegister >= start_BaseAddressRegister1 and AddressRegister <=end_BaseAddressRegister1
+else
+                                                AddressRegister(31 downto 2 ) - start_BaseAddressRegister2(31 downto 2)
+when AddressRegister >= start_BaseAddressRegister2 and AddressRegister <=end_BaseAddressRegister2
+else
+                                                AddressRegister(31 downto 2 ) - start_BaseAddressRegister3(31 downto 2)
+when AddressRegister >= start_BaseAddressRegister3 and AddressRegister <=end_BaseAddressRegister3
+else
+                                                AddressRegister(31 downto 2 ) - start_BaseAddressRegister4(31 downto 2)
+when AddressRegister >= start_BaseAddressRegister4 and AddressRegister <=end_BaseAddressRegister4
+else
+                                                AddressRegister(31 downto 2 ) - start_BaseAddressRegister5(31 downto 2)
+when AddressRegister >= start_BaseAddressRegister5 and AddressRegister <=end_BaseAddressRegister5
+else
+                                                AddressLocalAB(29 downto 0);
 
-    local_cs(0)                 <=      '0' when PCI_OperationPhases /= x"0" and AddressRegister >= start_BaseAddressRegister0 and AddressRegister<=end_BaseAddressRegister0 else
-                                        '1';
-    local_cs(1)                 <=      '0' when PCI_OperationPhases /= x"0" and AddressRegister >= start_BaseAddressRegister1 and AddressRegister<=end_BaseAddressRegister1 else
-                                        '1';
-    local_cs(2)                 <=      '0' when PCI_OperationPhases /= x"0" and AddressRegister >= start_BaseAddressRegister2 and AddressRegister<=end_BaseAddressRegister2 else
-                                        '1';
-    local_cs(3)                 <=      '0' when PCI_OperationPhases /= x"0" and  AddressRegister >= start_BaseAddressRegister3 and AddressRegister<=end_BaseAddressRegister3 else
-                                        '1';
-    local_cs(4)                 <=      '0' when PCI_OperationPhases /= x"0" and  AddressRegister >= start_BaseAddressRegister4 and AddressRegister<=end_BaseAddressRegister4 else
-                                        '1';
-    local_cs(5)                 <=      '0' when PCI_OperationPhases /= x"0" and  AddressRegister >= start_BaseAddressRegister5 and AddressRegister<=end_BaseAddressRegister5 else
-                                        '1';
+    local_cs_status(0)                          <=      '0' when PCI_OperationPhases /= x"0" and AddressRegister >= start_BaseAddressRegister0 and AddressRegister<=end_BaseAddressRegister0 else
+                                               '1';
+    local_cs_status(1)                          <=      '0' when PCI_OperationPhases /= x"0" and AddressRegister >= start_BaseAddressRegister1 and AddressRegister<=end_BaseAddressRegister1 else
+                                               '1';
+    local_cs_status(2)                          <=      '0' when PCI_OperationPhases /= x"0" and AddressRegister >= start_BaseAddressRegister2 and AddressRegister<=end_BaseAddressRegister2 else
+                                               '1';
+    local_cs_status(3)                          <=      '0' when PCI_OperationPhases /= x"0" and  AddressRegister >= start_BaseAddressRegister3 and AddressRegister<=end_BaseAddressRegister3 else
+                                               '1';
+    local_cs_status(4)                          <=      '0' when PCI_OperationPhases /= x"0" and  AddressRegister >= start_BaseAddressRegister4 and AddressRegister<=end_BaseAddressRegister4 else
+                                               '1';
+    local_cs_status(5)                          <=      '0' when PCI_OperationPhases /= x"0" and  AddressRegister >= start_BaseAddressRegister5 and AddressRegister<=end_BaseAddressRegister5 else
+                                               '1';
+    local_ab                                    <=      AddressLocalAB;
+    local_wdb(LOCAL_DBUS_WIDE-1 downto 0)       <=      AddressLocalWdb(LOCAL_DBUS_WIDE-1 downto 0);
+    stopn                                       <=      '1';
+    par                                         <=      '1';
+    trdyn                                       <=      trdyn_status;
+    serrn                                       <=      '1';
+    perrn                                       <=      '1';
+    local_cs                                    <=      local_cs_status;
+    req                                         <=      local_req_dma;
 
-    local_rd                    <=      '0' when PCI_OperationPhases /= x"0" and Memory_ReadPhase = Memory_Read and AddressRegister >= start_BaseAddressRegister2 and AddressRegister <= end_BaseAddressRegister2 else
-                                        '1';
-    local_wr                    <=      '0' when PCI_OperationPhases /= x"0" and Memory_WritePhase = Memory_Write and AddressRegister >= start_BaseAddressRegister2 and AddressRegister <= end_BaseAddressRegister2 else
-                                        '1';
+    process(PCI_OperationPhases,Memory_ReadPhase)
+    begin
+        if PCI_OperationPhases >= ReadAccess3 then
+            if Memory_ReadPhase = Memory_Read or IO_ReadPhase = IO_Read then
+                local_rd        <= '0';
+            end if;
+        else
+            local_rd      <= '1';
+        end if;
+    end process;
 
-    local_ab                    <=      AddressLocalAB;
-    local_wdb(LOCAL_DBUS_WIDE-1 downto 0)<=      AddressLocalWdb(LOCAL_DBUS_WIDE-1 downto 0);
-    stopn                       <=      '1';
-    par                         <=      '1';
-    trdyn                       <=      trdyn_status;
-    serrn                       <=      '1';
-    perrn                       <=      '1';
-    
+    process(PCI_OperationPhases,Memory_WritePhase)
+    begin
+        if PCI_OperationPhases /= x"0" then
+            if Memory_WritePhase = Memory_Write or IO_WritePhase = IO_Write then
+                local_wr        <= '0';
+            else
+                null;
+            end if;
+        else
+            local_wr      <= '1';
+        end if;
+    end process;
+
     process(framen,cben,trdyn_status)
     begin
         if framen = '0' then
             if cben = IO_Read then
                 IO_ReadPhase <= cben;
-            else
-                if cben = Memory_Read then
-                    Memory_ReadPhase <= cben;
-                end if;
             end if;
         else
             if trdyn_status'event and trdyn_status = '1' then
-                IO_ReadPhase   <= x"0";
-                Memory_ReadPhase <= x"0";
+                IO_ReadPhase <= x"0";
             end if;
         end if;
     end process;
@@ -229,40 +271,66 @@ begin
             if cben = IO_Write then
                 IO_WritePhase <= cben;
             else
-                if cben = Memory_Write then
-                    Memory_WritePhase <= cben;
-                end if;
+                null;
             end if;
         else
             if trdyn_status'event and trdyn_status = '1' then
                 IO_WritePhase   <= x"0";
+            end if;
+        end if;
+    end process;
+
+    
+    process(framen,cben,trdyn_status)
+    begin
+        if framen = '0' then
+            if cben = Memory_Read then
+                Memory_ReadPhase <= cben;
+            end if;
+        else
+            if trdyn_status'event and trdyn_status = '1' then
+                Memory_ReadPhase <= x"0";
+            end if;
+        end if;
+    end process;
+
+    process(framen,cben,trdyn_status)
+    begin
+        if framen = '0' then
+            if cben = Memory_Write then
+                Memory_WritePhase <= cben;
+            else
+                null;
+            end if;
+        else
+            if trdyn_status'event and trdyn_status = '1' then
                 Memory_WritePhase <= x"0";
             end if;
         end if;
     end process;
 
-    process(framen,cben,IdselStatus,irdyn)
+    process(clk,framen,cben,idsel,irdyn,trdyn_status)
     begin
-        if framen = '0' then
-            if IdselStatus = '1' and cben = ConfigWrite then
-                ConfigWritePhase <= cben;
-            end if;
+        if trdyn_status = '0' then
+            ConfigWritePhase    <= x"0";
         else
-            if irdyn'event and irdyn = '1' then
-                ConfigWritePhase <= x"0";
+            if clk'event and clk = '0'then
+                if framen = '0' and idsel = '1' and cben = ConfigWrite then
+                    ConfigWritePhase <= cben;
+                end if;
             end if;
         end if;
     end process;
-
-    process(framen,cben,IdselStatus,irdyn)
+    
+    process(clk,framen,cben,idsel,trdyn_status)
     begin
-        if framen = '0' then
-            if IdselStatus = '1' and cben = ConfigRead then
-                ConfigReadPhase <= cben;
-            end if;
+        if trdyn_status = '0' then
+            ConfigReadPhase <= x"0";
         else
-            if irdyn'event and irdyn = '1' then
-                ConfigReadPhase <= x"0";
+            if clk'event and clk ='0'then
+                if framen = '0' and idsel = '1' and cben = ConfigRead then
+                    ConfigReadPhase <= cben;
+                end if;
             end if;
         end if;
     end process;
@@ -278,7 +346,7 @@ begin
             wbBaseAddressRegister5      <= x"00000000";
         else
             if irdyn = '0' and (clk'event and clk = '0')then
-                if ConfigWritePhase = ConfigWrite  then
+                if ConfigWritePhase = ConfigWrite  and ad /= x"00000000" then
                     case AddressRegister(7 downto 2) is
                         when b"000100"  => wbBaseAddressRegister0   <= ad;
                         when b"000101"  => wbBaseAddressRegister1   <= ad;
@@ -289,7 +357,7 @@ begin
                         when others     => null;
                     end case;
                 else
-                    if Memory_WritePhase = Memory_Write then
+                    if Memory_WritePhase = Memory_Write or IO_WritePhase = IO_Write then
                         AddressLocalWdb <= ad;
                     else
                         wbBaseAddressRegister0      <= wbBaseAddressRegister0;
@@ -307,11 +375,10 @@ begin
         end if;
     end process;
 
-    process(rstn,clk,IdselStatus,cben)
+    process(rstn,clk,idsel,cben)
     begin
         if rstn = '0' then
             devseln <= '1';
-            trdyn_status   <= '1';
         else
             if clk'event and clk = '1' then
                 case PCI_OperationPhases is
@@ -335,11 +402,9 @@ begin
                         devseln                 <= '0';
                     when ReadAccess4 =>
                         PCI_OperationPhases     <= ReadAccess5;
-                        trdyn_status            <= '0';
                     when ReadAccess5 =>
                         PCI_OperationPhases     <= IDLE;
                         devseln                 <= '1';
-                        trdyn_status            <= '1';
 
                     when WriteAccess2 =>
                         PCI_OperationPhases     <= WriteAccess3;
@@ -348,13 +413,11 @@ begin
                         PCI_OperationPhases     <= WriteAccess4;
                     when WriteAccess4 =>
                         PCI_OperationPhases     <= WriteAccess5;
-                        trdyn_status            <= '0';
                     when WriteAccess5 =>
                         PCI_OperationPhases     <= WriteAccess6;
                     when WriteAccess6 =>
                         PCI_OperationPhases     <= IDLE;
                         devseln                 <= '1';
-                        trdyn_status            <= '1';
                     when others => null;
                 end case;
             else
@@ -363,6 +426,21 @@ begin
         end if;
     end process;
 
+    process(rstn)
+    begin
+        if rstn = '0' then
+            trdyn_status <= '1';
+        else
+            if PCI_OperationPhases = WriteAccess5 or PCI_OperationPhases = ReadAccess5 then
+                if ConfigWritePhase = ConfigWrite or ConfigReadPhase = ConfigRead or Memory_WritePhase = Memory_Write or Memory_ReadPhase = Memory_Read or IO_ReadPhase = IO_Read or IO_WritePhase = IO_Write then
+                    trdyn_status<= '0';
+                end if;
+            else
+                trdyn_status <= '1';
+            end if;
+        end if;
+    end process;
+    
     process(clk,rstn)
         variable tmp_variable : integer range 0 to 1023;
     begin
@@ -374,17 +452,41 @@ begin
                     if ConfigReadPhase = ConfigRead then
                         case AddressRegister(7 downto 2) is
                             when b"000000" => 
-                                OutToPciRegister(15 downto 0)                           <= VendorID;
-                                OutToPciRegister(31 downto 16)                          <= DeviceID;
+                                OutToPciRegister(15 downto 0)                           <= VENDOR_ID;
+                                OutToPciRegister(31 downto 16)                          <= DEVICE_ID;
                             when b"000001" => 
-                                OutToPciRegister(15 downto 0)                           <= Command;
-                                OutToPciRegister(31 downto 16)                          <= Status;
+                                OutToPciRegister(15 downto 0)                           <= COMMAND;
+                                OutToPciRegister(31 downto 16)                          <= STATUS;
                             when b"000010" => 
-                                OutToPciRegister(15 downto 0)                           <= RevisionID;
-                                OutToPciRegister(31 downto 16)                          <= Class_code;                          
+                                OutToPciRegister(15 downto 0)                           <= REVISION_ID;
+                                OutToPciRegister(31 downto 16)                          <= CLASS_CODE;                          
                             when b"000011" => 
                                 OutToPciRegister(15 downto 0)                           <= x"4010";
                                 OutToPciRegister(31 downto 16)                          <= x"0000";                          
+                            when b"0001_00" =>   
+                                tmp_variable := BaseAddress0Size;
+                                if tmp_variable /= 0 then
+                                    OutToPciRegister(31 downto BaseAddress0Size+1)      <= wbBaseAddressRegister0(31 downto BaseAddress0Size+1);
+                                    OutToPciRegister(BaseAddress0Size)                  <= '1';
+                                    for n in 1 to BaseAddress0Size-1 loop
+                                        OutToPciRegister(n)                             <= '0';
+                                    end loop;
+                                    OutToPciRegister(0)                                 <= Bar0SpaceType;
+                                else
+                                    OutToPciRegister                                    <= x"00000000";
+                                end if;
+                            when b"0001_01" =>   
+                                tmp_variable := BaseAddress1Size;
+                                if tmp_variable /= 0 then
+                                    OutToPciRegister(31 downto BaseAddress1Size+1)      <= wbBaseAddressRegister1(31 downto BaseAddress1Size+1);
+                                    OutToPciRegister(BaseAddress1Size)                  <= '1';
+                                    for n in 1 to BaseAddress1Size-1 loop
+                                        OutToPciRegister(n)                             <= '0';
+                                    end loop;
+                                    OutToPciRegister(0)                                 <= Bar1SpaceType;
+                                else
+                                    OutToPciRegister                                    <= x"00000000";
+                                end if;
                             when b"000110" =>   
                                 tmp_variable := BaseAddress2Size;
                                 if tmp_variable /= 0 then
@@ -435,9 +537,9 @@ begin
                                 end if;
                                 
                             when b"001011" => 
-                                OutToPciRegister(15 downto 0)                           <= SYS_VentirID;
-                                OutToPciRegister(31 downto 16)                          <= SYS_DevideID;
-                            when b"001111" => 
+                                OutToPciRegister(15 downto 0)                           <= SYS_VENDOR_ID;
+                                OutToPciRegister(31 downto 16)                          <= SYS_DEVICE_ID;
+                            when b"0011_11" => 
                                 OutToPciRegister                                        <= x"0000010f";
 
                             when b"0011_01" =>
@@ -459,19 +561,27 @@ begin
                                 OutToPciRegister(15 downto 0)                           <= x"4c06";
                                 OutToPciRegister(31 downto 16)                          <= x"0080";
                                 
-                            when b"011100" => 
-                                OutToPciRegister(15 downto 0)                           <= SYS_VentirID;
-                                OutToPciRegister(31 downto 16)                          <= SYS_DevideID;
+                            when b"0111_00" => 
+                                OutToPciRegister(15 downto 0)                           <= x"10b5";
+                                OutToPciRegister(31 downto 16)                          <= x"30c2";
                             when b"011101" => 
-                                OutToPciRegister(15 downto 0)                           <= RevisionID;
+                                OutToPciRegister(15 downto 0)                           <= REVISION_ID;
                                 OutToPciRegister(31 downto 16)                          <= x"0000";
                                 
                             when others    => 
                                 OutToPciRegister                                        <= x"00000000";
                         end case;
                     else
-                        if Memory_ReadPhase = Memory_Read then
-                            OutToPciRegister(LOCAL_DBUS_WIDE-1 downto 0)                <= local_rdb(LOCAL_DBUS_WIDE-1 downto 0);
+                        if Memory_ReadPhase = Memory_Read or IO_ReadPhase = IO_Read then
+                            if local_cs_status(0) = '0' then
+                                case AddressRegister(7 downto 0) is
+                                    when x"80"      => OutToPciRegister                 <= DMAMODE0;
+                                    when x"a8"      => OutToPciRegister(7 downto 0)     <= DMACRS0;
+                                    when others     => null;
+                                end case;
+                            else        
+                                OutToPciRegister(LOCAL_DBUS_WIDE-1 downto 0)                <= local_rdb(LOCAL_DBUS_WIDE-1 downto 0);
+                            end if;
                         else
                             null;
                             OutToPciRegister                                            <= x"ZZZZZZZZ";
