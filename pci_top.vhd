@@ -35,11 +35,11 @@ entity pci_top is
         COMMAND                 : std_logic_vector(15 downto 0) := x"0117"                                      ;
         STATUS                  : std_logic_vector(15 downto 0) := x"0290"                                      ;
 
-        BaseAddress0Size        : integer         := 16                                                         ;
+        BaseAddress0Size        : integer         := 10                                                         ;
         BaseAddress1Size        : integer         := 6                                                          ;
-        BaseAddress2Size        : integer         := 21                                                         ;
-        BaseAddress3Size        : integer         := 6                                                          ;
-        BaseAddress4Size        : integer         := 6                                                          ;
+        BaseAddress2Size        : integer         := 23                                                         ;
+        BaseAddress3Size        : integer         := 23                                                          ;
+        BaseAddress4Size        : integer         := 11                                                          ;
         BaseAddress5Size        : integer         := 6                                                          ;
         Bar0SpaceType           : std_logic       := '0'                                                        ;
         Bar1SpaceType           : std_logic       := '1'                                                        ;
@@ -50,29 +50,33 @@ entity pci_top is
 
         );
     port (
-        clk	                : in            std_logic                                                       ;
-        rstn	                : in            std_logic                                                       ;
-        idsel	                : in            std_logic                                                       ;
-        framen	                : inout         std_logic                                                       ;
-        irdyn	                : in            std_logic                                                       ;
-        devseln	                : inout         std_logic                                                       ;
-        trdyn	                : inout         std_logic                                                       ;
-        stopn	                : inout         std_logic                                                       ;
-        intan	                : out           std_logic                                                       ;
-        serrn	                : out           std_logic                                                       ;
-        cben	                : inout         std_logic_vector (3 downto 0)                                   ;
-        par	                : inout         std_logic                                                       ;
-        perrn	                : inout         std_logic                                                       ;
-        req 			: out 	        std_logic                                                       ;
-        gnt 	                : in 		std_logic                                                       ;
-        ad                      : inout         std_logic_vector(31 downto 0)                                   ;
-        local_cs                : out           std_logic_vector(5 downto 0)                                    ;
-        local_wr                : out           std_logic                                                       ;
-        local_rd                : out           std_logic                                                       ;
-        local_ab                : out           std_logic_vector(31 downto 0)                                   ;
-        local_rdb               : in            std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)                  ;
-        local_wdb               : out           std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)                  ;
-        local_req_dma           : in            std_logic 
+        clk	                	: in            std_logic                                                       ;
+        rstn	               	: in            std_logic                                                       ;
+        idsel	               	: in            std_logic                                                       ;
+        framen	               	: inout         std_logic                                                       ;
+        irdyn	            	: in            std_logic                                                       ;
+        devseln	            	: inout         std_logic                                                       ;
+        trdyn	               	: inout         std_logic                                                       ;
+        stopn	               	: inout         std_logic                                                       ;
+        intan	               	: out           std_logic                                                       ;
+        serrn	               	: out           std_logic                                                       ;
+        cben	               	: in         std_logic_vector (3 downto 0)                                   ;
+        par	                	: inout         std_logic                                                       ;
+        perrn	               	: inout         std_logic                                                       ;
+        req 					: out 	        std_logic                                                       ;
+        gnt 	              	: in 			std_logic                                                   ;
+        lock 					: out 			std_logic 														;
+        bd_sel 					: out 			std_logic 														;
+        enum 					: out 			std_logic 														;
+        ad                    	: inout         std_logic_vector(31 downto 0)                                   ;
+        local_cs              	: out           std_logic_vector(5 downto 0)                                    ;
+        local_wr              	: out           std_logic                                                       ;
+        local_rd              	: out           std_logic                                                       ;
+        local_ab              	: out           std_logic_vector(31 downto 0)                                   ;
+        local_rdb             	: in            std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)                  ;
+        local_wdb             	: out           std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)                  ;
+        local_req_dma         	: in            std_logic ;
+		local_int 				: in 			std_logic        
         );
 end pci_top;
 
@@ -103,29 +107,33 @@ architecture syn of pci_top is
             );
 	port (
             clk	                                : in            std_logic                                       ;
-            rstn	                        : in            std_logic                                       ;
-            idsel	                        : in            std_logic                                       ;
-            framen	                        : inout         std_logic                                       ;
-            irdyn	                        : in            std_logic                                       ;
-            devseln	                        : inout         std_logic                                       ;
-            trdyn	                        : inout         std_logic                                       ;
-            stopn	                        : inout         std_logic                                       ;
-            intan	                        : out           std_logic                                       ;
-            serrn	                        : out           std_logic                                       ;
-            cben	                        : inout         std_logic_vector (3 downto 0)                   ;
+            rstn	                        	: in            std_logic                                       ;
+            idsel	                        	: in            std_logic                                       ;
+            framen	                        	: inout         std_logic                                       ;
+            irdyn	                        	: in            std_logic                                       ;
+            devseln	                        	: inout         std_logic                                       ;
+            trdyn	                        	: inout         std_logic                                       ;
+            stopn	                        	: inout         std_logic                                       ;
+            intan	                        	: out           std_logic                                       ;
+            serrn	                        	: out           std_logic                                       ;
+            cben	                        	: in         std_logic_vector (3 downto 0)                   ;
             par	                                : inout         std_logic                                       ;
-            perrn	                        : inout         std_logic                                       ;
-            req 				: out 	        std_logic                                       ;
-            gnt 				: in 		std_logic                                       ;
+            perrn	                        	: inout         std_logic                                       ;
+            req 								: out 	        std_logic                                       ;
+            gnt 								: in 		std_logic                                       ;
+	        lock 								: out 			std_logic 														;
+    	    bd_sel 								: out 			std_logic 														;
+	        enum 								: out 			std_logic 														;
             ad                                  : inout         std_logic_vector(31 downto 0)                   ;
 
             local_cs                            : out           std_logic_vector(5 downto 0)                    ;
             local_wr                            : out           std_logic                                       ;
             local_rd                            : out           std_logic                                       ;
             local_ab                            : out           std_logic_vector(31 downto 0)                   ;
-            local_rdb                           : in            std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)  ;
+            local_rdb                           : in            std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)  := x"00000000";
             local_wdb                           : out           std_logic_vector(LOCAL_DB_BUS_WIDE-1 downto 0)  ;
-            local_req_dma                       : in            std_logic
+            local_req_dma                       : in            std_logic										;
+			local_int 							: in 			std_logic        
             );
 
     end component;
@@ -170,16 +178,20 @@ begin
             devseln                                     => devseln                                              ,
             trdyn                                       => trdyn                                                ,
             stopn                                       => stopn                                                ,
-            req 					=> req                                                  ,
-            gnt 					=> gnt                                                  ,
+            req 										=> req                                                  ,
+            gnt 										=> gnt                                                  ,
+            lock 										=> lock 												,
+	        bd_sel 				   						=> bd_sel 												,
+    	    enum 										=> enum 												,
             ad                                          => ad                                                   ,
                 
             local_cs                                    => local_cs                                             ,
             local_wr                                    => local_wr                                             ,
             local_rd                                    => local_rd                                             ,
             local_ab                                    => local_ab                                             ,
-            local_wdb(LOCAL_DB_BUS_WIDE-1 downto 0)     => local_wdb(LOCAL_DB_BUS_WIDE-1 downto 0)              ,
-            local_rdb(LOCAL_DB_BUS_WIDE-1 downto 0)     => local_rdb(LOCAL_DB_BUS_WIDE-1 downto 0)              ,
-            local_req_dma                               => local_req_dma
+            local_wdb(31 downto 0)     					=> local_wdb(31 downto 0)              					,
+            local_rdb(31 downto 0)     					=> local_rdb(31 downto 0)              					,
+            local_req_dma                               => local_req_dma										,
+            local_int 									=> local_int
             );
 end syn;
